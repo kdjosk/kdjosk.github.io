@@ -1,0 +1,135 @@
+@import url("normalize.css") layer(normalize);
+@import url("highlight.css") layer(highlight);
+
+/* Border box sizing */
+html {
+    box-sizing: border-box;
+    font-size: 10px;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: inherit;
+}
+
+/* Basic styling */
+
+    
+html {
+    font-size: 10px;
+    font-family: "Noto Sans", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 350;
+    font-style: normal;
+    font-variation-settings: "wdth" 100;    
+}
+
+h1,
+h2 {
+    font-family: "Roboto Slab", serif;
+    font-style: normal;
+    font-optical-sizing: auto;
+}
+
+h1 {
+    font-size: 5rem;
+    text-transform: capitalize;
+    text-align: center;
+    font-weight: 600;
+}
+
+h2 {
+    font-size: 2rem;
+    font-weight: 400;
+}
+
+p,
+ul {
+    font-size: 1.6rem;
+    line-height: 1.5;
+}
+
+code {
+    font-size: 1.5rem;
+    line-height: 1.4;
+    font-family: "Source Code Pro", monospace;
+    font-optical-sizing: auto;
+    font-weight: 450;
+    font-style: normal;
+}
+
+/* Links */
+a {
+    outline-color: transparent;
+}
+
+a:link {
+    color: #1c7ece;
+}
+
+a:visited {
+    color: #6f1add;
+}
+
+a:focus {
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: none;
+}
+
+a:active {
+    background: #1c7ece;
+    color: #edf1e9;
+}
+
+a[href^="http"] {
+    background-image: url("icons8-external-link.svg");
+    background-repeat: no-repeat;
+    background-size: 14px 14px;
+    background-position: 100% 40%;
+    padding-right: 16px;
+}
+
+/* Nav bar */
+nav {
+    ul {
+        padding-left: 0;
+        display: flex;
+        gap: 0.625%;
+    }
+    li {
+        list-style-type: none;
+        flex: 1;
+    }
+
+    /* Buttons */
+    li a {
+        display: inline-block;
+        width: 100%;
+        line-height: 3;
+        text-align: center;
+        text-decoration: none;
+        outline-color: transparent;
+        color: #222;
+        border: 2px solid #222;
+    }
+
+    a:link,
+    a:visited,
+    a:focus {
+        color: #222;
+    }
+
+    a:hover {
+        background: #222;
+        color: #fff
+    }
+
+    a:active {
+        background: darkred;
+        color: white;
+    }
+}
