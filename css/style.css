@@ -20,9 +20,14 @@ html {
     font-size: 10px;
     font-family: "Noto Sans", sans-serif;
     font-optical-sizing: auto;
-    font-weight: 350;
+    font-weight: 400;
     font-style: normal;
     font-variation-settings: "wdth" 100;    
+}
+
+body {
+    width: 90%;
+    margin: 2rem auto;
 }
 
 h1,
@@ -86,11 +91,15 @@ a:active {
 }
 
 a[href^="http"] {
-    background-image: url("icons8-external-link.svg");
+    background-image: url("9110810_external_link_icon.svg");
     background-repeat: no-repeat;
-    background-size: 14px 14px;
-    background-position: 100% 40%;
+    background-size: 12px 12px;
+    background-position: 100% 50%;
     padding-right: 16px;
+}
+
+.site-title {
+    display: inline-block;
 }
 
 /* Nav bar */
@@ -98,18 +107,21 @@ nav {
     ul {
         padding-left: 0;
         display: flex;
+        flex-direction: column;
         gap: 0.625%;
     }
     li {
         list-style-type: none;
         flex: 1;
+        font-size: 1.8rem;
+        font-weight: 400;
     }
 
     /* Buttons */
     li a {
         display: inline-block;
         width: 100%;
-        line-height: 3;
+        line-height: 2.5;
         text-align: center;
         text-decoration: none;
         outline-color: transparent;
@@ -132,4 +144,25 @@ nav {
         background: darkred;
         color: white;
     }
+}
+
+/* Hamburger Menu */
+
+.hamburger {
+    font-size: 2.2rem;
+    float: right;
+    line-height: 2;
+    cursor: pointer;
+}
+
+.hamburger-checkbox { 
+    display: none; 
+}
+
+nav ul { 
+    display: none; 
+}
+
+.hamburger-checkbox:checked ~ nav ul { 
+    display: block;
 }
