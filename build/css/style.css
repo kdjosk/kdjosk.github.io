@@ -1,5 +1,5 @@
-@import url("normalize.css") layer(normalize);
-@import url("highlight.css") layer(highlight);
+@import url("normalize.css");
+@import url("highlight.css");
 
 /* Border box sizing */
 html {
@@ -103,51 +103,49 @@ a[href^="http"] {
 }
 
 /* Nav bar */
-nav {
-    ul {
-        padding-left: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 0.625%;
-    }
-    li {
-        list-style-type: none;
-        flex: 1;
-        font-size: 1.8rem;
-        font-weight: 400;
-    }
-
-    /* Buttons */
-    li a {
-        display: inline-block;
-        width: 100%;
-        line-height: 2.5;
-        text-align: center;
-        text-decoration: none;
-        outline-color: transparent;
-        color: #222;
-        border: 2px solid #222;
-    }
-
-    a:link,
-    a:visited,
-    a:focus {
-        color: #222;
-    }
-
-    a:hover {
-        background: #222;
-        color: #fff
-    }
-
-    a:active {
-        background: darkred;
-        color: white;
-    }
+nav ul {
+    padding-left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625%;
 }
 
-/* Hamburger Menu */
+nav li {
+    list-style-type: none;
+    flex: 1;
+    font-size: 1.8rem;
+    font-weight: 400;
+}
 
+nav li a {
+    display: inline-block;
+    width: 100%;
+    line-height: 2.5;
+    text-align: center;
+    text-decoration: none;
+    outline-color: transparent;
+    color: #222;
+    border: 2px solid #222;
+}
+
+nav a:link,
+nav a:visited,
+nav a:focus {
+    color: #222;
+}
+
+nav a:hover {
+    background: #222;
+    color: #fff;
+}
+
+nav a:active {
+    background: darkred;
+    color: white;
+}
+
+
+/* Hamburger Menu */
 .hamburger {
     font-size: 2.2rem;
     float: right;
