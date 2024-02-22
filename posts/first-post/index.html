@@ -12,18 +12,21 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Roboto+Slab:wght@100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">  </head>
   <body>
-  <header>
-    <h2 class="site-title">Krzysztof Jóskowiak</h2>
-    <label for="hamburger-checkbox" class="hamburger">&#9776;</label>
-    <input class="hamburger-checkbox" type="checkbox" id="hamburger-checkbox"/>
-    <nav>
-      <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="/blog">Blog</a></li>
-      </ul>
-    </nav>
-  </header>
+    <header>
+      <a class="site-title" href="/">Krzysztof Jóskowiak</a>
+      <input id="ham-checkbox" class="ham-checkbox" type="checkbox">
+      <label for="ham-checkbox" class="ham-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg>
+      </label>
+      <nav>
+        <ul class="nav-menu">
+            <li><a href="/">Home</a></li>
+            <li><a href="/blog">Blog</a></li>
+        </ul>
+      </nav>
+    </header>
     <main>
+      <article>
     <h1>First post</h1>
     <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Eu sem integer vitae justo eget. At tempor commodo ullamcorper a lacus vestibulum. Molestie ac feugiat sed lectus vestibulum mattis. Metus dictum at tempor commodo ullamcorper a. Turpis nunc eget lorem dolor sed viverra ipsum. Scelerisque purus semper eget duis at. Varius quam quisque id diam vel quam elementum. Ultrices eros in cursus turpis massa tincidunt dui. Tempus egestas sed sed risus pretium.</p>
 <p>Mauris sit amet massa vitae tortor condimentum lacinia quis vel. Leo vel orci porta non pulvinar neque. Sed vulputate odio ut enim blandit volutpat. Facilisis sed odio morbi quis. Erat velit scelerisque in dictum non. Scelerisque fermentum dui faucibus in ornare quam viverra orci sagittis. Tortor condimentum lacinia quis vel eros. In nibh mauris cursus mattis. Enim ut sem viverra aliquet. Bibendum arcu vitae elementum curabitur vitae nunc sed. Nunc sed velit dignissim sodales ut. Ipsum a arcu cursus vitae congue mauris rhoncus aenean. Vel elit scelerisque mauris pellentesque pulvinar pellentesque habitant morbi. Eget duis at tellus at urna condimentum mattis. Maecenas ultricies mi eget mauris pharetra et ultrices neque. Enim praesent elementum facilisis leo vel fringilla est. Lacus luctus accumsan tortor posuere ac ut consequat. Condimentum mattis pellentesque id nibh tortor id aliquet lectus proin. In nulla posuere sollicitudin aliquam ultrices sagittis. Etiam dignissim diam quis enim lobortis scelerisque fermentum.</p>
@@ -34,9 +37,11 @@
 </code></pre></div>
 
 <p>Generated with <a href="https://loremipsum.io/">lorem ipsum</a></p>
+      </article>
     </main>
     <footer>
         <p>&copy; 2024 Krzysztof Jóskowiak</p>
     </footer>
+    <script src="/scripts/main.js"></script>
   </body>
 </html>
