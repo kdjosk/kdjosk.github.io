@@ -23,6 +23,7 @@ LAYOUTS_DIR = Path(SRC_DIR, "layouts")
 PARTIALS_DIR = Path(SRC_DIR, "partials")
 DATA_DIR = Path(SRC_DIR, "data")
 CSS_DIR = Path(SRC_DIR, "css")
+JS_DIR = Path(SRC_DIR, "scripts")
 BUILD_DIR = Path("build")
 
 
@@ -56,7 +57,7 @@ def gather_pages() -> Sequence[Page]:
     pages = []
     for dirpath, _, filenames in os.walk(SRC_DIR):
         if (
-            Path(dirpath) in (LAYOUTS_DIR, DATA_DIR, CSS_DIR)
+            Path(dirpath) in (LAYOUTS_DIR, DATA_DIR, CSS_DIR, JS_DIR)
         ):
             continue
 
@@ -141,8 +142,18 @@ def copy_css():
     shutil.copytree(CSS_DIR, css_build_path)
 
 
+def copy_js():
+    if not JS_DIR.exists():
+        return
+    js_build_path = Path(BUILD_DIR, JS_DIR.relative_to(SRC_DIR))
+    if js_build_path.exists():
+        shutil.rmtree(js_build_path)
+    shutil.copytree(JS_DIR, js_build_path)
+
+
 def build_site(pages: Sequence[Page], templates, data, collections):
     copy_css()
+    copy_js()
 
     for page in pages:
         template = templates.get(page.layout)

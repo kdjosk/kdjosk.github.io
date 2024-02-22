@@ -14,8 +14,6 @@ html {
 }
 
 /* Basic styling */
-
-    
 html {
     font-size: 10px;
     font-family: "Noto Sans", sans-serif;
@@ -27,11 +25,13 @@ html {
 
 body {
     width: 90%;
+    max-width: 800px;
     margin: 2rem auto;
 }
 
 h1,
-h2 {
+h2,
+.site-title {
     font-family: "Roboto Slab", serif;
     font-style: normal;
     font-optical-sizing: auto;
@@ -49,6 +49,19 @@ h2 {
     font-weight: 400;
 }
 
+.site-title {
+    display: inline-block;
+    line-height: 3;
+    font-size: 2.5rem;
+    font-weight: 500;
+    text-align: left;
+}
+
+.site-title:link {
+    color: black;
+    text-decoration: none;
+}
+
 p,
 ul {
     font-size: 1.6rem;
@@ -62,6 +75,14 @@ code {
     font-optical-sizing: auto;
     font-weight: 450;
     font-style: normal;
+}
+
+.codehilite {
+    overflow-x: scroll;
+}
+
+header {
+    border-bottom: 1px solid gray;
 }
 
 /* Links */
@@ -98,40 +119,40 @@ a[href^="http"] {
     padding-right: 16px;
 }
 
-.site-title {
-    display: inline-block;
-}
-
 /* Nav bar */
 nav ul {
     padding-left: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.625%;
 }
 
 nav li {
     list-style-type: none;
-    flex: 1;
     font-size: 1.8rem;
     font-weight: 400;
+    border: 2px solid #222;
+    border-bottom: none;
+}
+
+nav li:last-child {
+    border-bottom: 2px solid #222;
 }
 
 nav li a {
-    display: inline-block;
+    display: block;
     width: 100%;
+    padding: 0 1rem;
     line-height: 2.5;
     text-align: center;
     text-decoration: none;
     outline-color: transparent;
     color: #222;
-    border: 2px solid #222;
+
 }
 
 nav a:link,
 nav a:visited,
 nav a:focus {
     color: #222;
+    background: white;
 }
 
 nav a:hover {
@@ -140,27 +161,58 @@ nav a:hover {
 }
 
 nav a:active {
-    background: darkred;
+    background: darkorange;
     color: white;
 }
 
-
-/* Hamburger Menu */
-.hamburger {
-    font-size: 2.2rem;
-    float: right;
-    line-height: 2;
-    cursor: pointer;
+.ham-checkbox {
+    display: none;
 }
 
-.hamburger-checkbox { 
-    display: none; 
-}
-
-nav ul { 
-    display: none; 
-}
-
-.hamburger-checkbox:checked ~ nav ul { 
+.ham-icon {
     display: block;
+    cursor: pointer;
+    width: 3rem;
+    height: 3rem;
+    position: absolute;
+    top: 4rem;
+    right: 3rem;
+}
+
+.ham-checkbox:checked ~ nav {
+    display: none;
+}
+
+@media screen and (min-width: 40em) {
+    header {
+        display: flex;
+    }
+
+    .site-title {
+        flex: 1;
+    }
+    nav {
+        display: block;
+        flex: 1;
+    }
+    nav ul {
+        display: flex;
+    }
+    nav li {
+        flex: 1;
+        list-style-type: none;
+        font-size: 1.8rem;
+        font-weight: 400;
+        border: 2px solid #222;
+        border-right: none;
+    }
+    
+    nav li:last-child {
+        border-right: 2px solid #222;
+    }
+
+    .ham-icon {
+        display: none;
+    }
+
 }
