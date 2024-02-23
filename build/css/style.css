@@ -57,9 +57,14 @@ h2 {
     text-align: left;
 }
 
-.site-title:link {
+.site-title:link,
+.site-title:visited,
+.site-title:focus,
+.site-title:hover,
+.site-title:active {
     color: black;
     text-decoration: none;
+    background-color: white;
 }
 
 p,
