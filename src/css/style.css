@@ -110,7 +110,7 @@ h2 {
 }
 
 .latest-post-list li {
-    padding-bottom: 30px;
+    padding-bottom: 10px;
 }
 
 .post-date {
@@ -122,7 +122,7 @@ p,
 ul {
     font-size: 1.6rem;
     line-height: 1.5;
-    margin: 2rem 0;
+    margin: 1.5rem 0;
 }
 
 code {
