@@ -258,7 +258,7 @@ nav {
 
 .ham-checkbox:checked ~ .ham-icon .top-bar {
     transform: translate(0, -0.25rem) rotate(45deg);
-    width: calc(sqrt(2) * 3rem)
+    width: calc(1.414 * 3rem);
 }
 
 .ham-checkbox:checked ~ .ham-icon .mid-bar {
@@ -267,7 +267,7 @@ nav {
 
 .ham-checkbox:checked ~ .ham-icon .bot-bar {
     transform: translate(0, 0.25rem) rotate(-45deg);
-    width: calc(sqrt(2) * 3rem)
+    width: calc(1.414 * 3rem);
 }
 
 @media screen and (min-width: 40em) {
