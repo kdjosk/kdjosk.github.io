@@ -1,4 +1,4 @@
 - text: "Home"
   href: "/"
-- text: "Blog"
-  href: "/blog"
+- text: "Archive"
+  href: "/archive"

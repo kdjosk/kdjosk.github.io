@@ -1,5 +1,13 @@
 {% extends "base.jinja" %}
 {% block content %}
-    <h1>Home</h1>
-    {{ content | safe }}
+  <h1>latest posts</h1>
+  <ul class="latest-post-list">
+  {% for post in collections.post|sort(attribute="date") %}
+    <li>
+      <span class="post-date">{{ post.date }}</span> 
+      <h2><a href="{{ post.url }}">{{ post.title }}</a></h2>
+      <p>{{ post.summary }}</p>
+    </li>
+  {% endfor %}
+  </ul>
 {% endblock %}

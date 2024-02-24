@@ -1,5 +1,5 @@
-@import url("normalize.css");
-@import url("highlight.css");
+@import url("normalize.css") layer(normalize);
+@import url("highlight.css") layer(highlight);
 
 /* Border box sizing */
 html {
@@ -13,6 +13,10 @@ html {
     box-sizing: inherit;
 }
 
+* {
+    margin: 0;
+}
+
 /* Basic styling */
 html {
     font-size: 10px;
@@ -24,9 +28,40 @@ html {
 }
 
 body {
-    width: 90%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+.main-content {
     max-width: 800px;
-    margin: 2rem auto;
+    margin: 0 auto;
+    padding: 30px 15px;
+}
+
+.header-content {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+.footer-content {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+header {
+    border-bottom: 1px solid lightgray;
+}
+
+footer {
+    border-top: 1px solid lightgray;
+    padding: 30px 0;
 }
 
 h1,
@@ -38,15 +73,16 @@ h2,
 }
 
 h1 {
-    font-size: 5rem;
+    font-size: 3.5rem;
     text-transform: capitalize;
-    text-align: center;
-    font-weight: 600;
+    font-weight: 500;
+    margin-bottom: 2rem;
 }
 
 h2 {
-    font-size: 2rem;
+    font-size: 2.5rem;
     font-weight: 400;
+    margin-bottom: 1rem;
 }
 
 .site-title {
@@ -55,6 +91,7 @@ h2 {
     font-size: 2.5rem;
     font-weight: 500;
     text-align: left;
+    margin: 0;
 }
 
 .site-title:link,
@@ -65,6 +102,20 @@ h2 {
     color: black;
     text-decoration: none;
     background-color: white;
+}
+
+.latest-post-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.latest-post-list li {
+    padding-bottom: 30px;
+}
+
+.post-date {
+    font-size: 1.5rem;
+    color: gray;
 }
 
 p,
@@ -84,10 +135,6 @@ code {
 
 .codehilite {
     overflow-x: scroll;
-}
-
-header {
-    border-bottom: 1px solid gray;
 }
 
 /* Links */
@@ -133,12 +180,12 @@ nav li {
     list-style-type: none;
     font-size: 1.8rem;
     font-weight: 400;
-    border: 2px solid #222;
+    border: 1px solid gray;
     border-bottom: none;
 }
 
 nav li:last-child {
-    border-bottom: 2px solid #222;
+    border-bottom: 1px solid gray;
 }
 
 nav li a {
@@ -150,7 +197,6 @@ nav li a {
     text-decoration: none;
     outline-color: transparent;
     color: #222;
-
 }
 
 nav a:link,
@@ -180,42 +226,93 @@ nav a:active {
     width: 3rem;
     height: 3rem;
     position: absolute;
-    top: 4rem;
-    right: 3rem;
+    top: 2rem;
+    right: 2rem;
+}
+
+.ham-icon .bar {
+    background-color: black;
+    width: 3rem;
+    height: 0.5rem;
+    margin: 0.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.5s ease-in-out;
+}
+
+.ham-icon .top-bar {
+    transform-origin: top left;
+}
+
+.ham-icon .bot-bar {
+    transform-origin: bottom left;
+}
+
+nav {
+    width: 100%;
+    height: 100%;
+    max-height: 0;
+    overflow: hidden;
+    transition: 
+        max-height 0.5s ease-in-out,
+        margin-bottom 0.5s ease-in-out;
 }
 
 .ham-checkbox:checked ~ nav {
-    display: none;
+    max-height: 10rem;
+    margin-bottom: 15px;
+}
+
+.ham-checkbox:checked ~ .ham-icon .top-bar {
+    transform: rotate(45deg);
+}
+
+.ham-checkbox:checked ~ .ham-icon .mid-bar {
+    background: transparent;
+}
+
+.ham-checkbox:checked ~ .ham-icon .bot-bar {
+    transform: rotate(-45deg);
 }
 
 @media screen and (min-width: 40em) {
-    header {
+    .header-content {
         display: flex;
+        justify-content: space-between;
     }
 
-    .site-title {
-        flex: 1;
-    }
     nav {
-        display: block;
-        flex: 1;
+        max-height: 100%;
     }
+
     nav ul {
         display: flex;
+        align-items: center; /* Align vertical */
+        margin: 0;
+        height: 100%;
     }
     nav li {
         flex: 1;
         list-style-type: none;
         font-size: 1.8rem;
         font-weight: 400;
-        border: 2px solid #222;
-        border-right: none;
+        border: none;
+        padding: 5px;
     }
-    
     nav li:last-child {
-        border-right: 2px solid #222;
+        border: none;
     }
 
+    nav a {
+        display: inline-block;
+        line-height: unset;
+    }
+
+    nav a:hover {
+        text-decoration: underline;
+        background-color: white;
+        color: black;
+    }
+    
     .ham-icon {
         display: none;
     }

@@ -26,6 +26,7 @@ CSS_DIR = Path(SRC_DIR, "css")
 JS_DIR = Path(SRC_DIR, "scripts")
 BUILD_DIR = Path("build")
 
+#TODO: Disable cache as users might not be able to see new posts
 
 @dataclass
 class Page:

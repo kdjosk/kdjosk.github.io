@@ -3,6 +3,7 @@ date: 2024-02-13
 layout: "post.jinja"
 title: 'First post'
 tags: 'post'
+summary: "In this post I explain how to lorem ipsum"
 ---
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Eu sem integer vitae justo eget. At tempor commodo ullamcorper a lacus vestibulum. Molestie ac feugiat sed lectus vestibulum mattis. Metus dictum at tempor commodo ullamcorper a. Turpis nunc eget lorem dolor sed viverra ipsum. Scelerisque purus semper eget duis at. Varius quam quisque id diam vel quam elementum. Ultrices eros in cursus turpis massa tincidunt dui. Tempus egestas sed sed risus pretium.
