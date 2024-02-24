@@ -165,11 +165,11 @@ a:active {
 }
 
 a[href^="http"] {
-    background-image: url("9110810_external_link_icon.svg");
+    background-image: url("external_link_icon.svg");
     background-repeat: no-repeat;
-    background-size: 12px 12px;
-    background-position: 100% 50%;
-    padding-right: 16px;
+    background-size: 13px 12px;
+    background-position: 100% 60%;
+    padding-right: 17px;
 }
 
 /* Nav bar */
