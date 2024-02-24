@@ -40,19 +40,19 @@ main {
 .main-content {
     max-width: 800px;
     margin: 0 auto;
-    padding: 30px 15px;
+    padding: 30px 20px;
 }
 
 .header-content {
     max-width: 800px;
     margin: 0 auto;
-    padding: 0 15px;
+    padding: 0 20px;
 }
 
 .footer-content {
     max-width: 800px;
     margin: 0 auto;
-    padding: 0 15px;
+    padding: 0 20px;
 }
 
 header {
@@ -122,6 +122,7 @@ p,
 ul {
     font-size: 1.6rem;
     line-height: 1.5;
+    margin: 2rem 0;
 }
 
 code {
@@ -174,6 +175,7 @@ a[href^="http"] {
 /* Nav bar */
 nav ul {
     padding-left: 0;
+    margin: 0;
 }
 
 nav li {
