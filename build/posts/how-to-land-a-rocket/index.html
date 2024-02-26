@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>My Website</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+    <!-- FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Roboto+Slab:wght@100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">  </head>
+  <body>
+    <header>
+      <div class="header-content">
+        <a class="site-title" href="/">Krzysztof Jóskowiak</a>
+        <input id="ham-checkbox" class="ham-checkbox" type="checkbox">
+        <label for="ham-checkbox" class="ham-icon">
+          <div class="bars">
+            <div class="bar top-bar"></div>
+            <div class="bar mid-bar"></div>
+            <div class="bar bot-bar"></div>
+          </div>
+        </label>
+        <nav>
+          <ul class="nav-menu">
+              <li><a href="/">Home</a></li>
+              <li><a href="/archive">Archive</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <div class="main-content">
+        <article>
+    <h1>How to land a rocket safely</h1>
+    <p>During my time at the university I was trying to implement a controller with <a href="https://krpc.github.io/krpc/">kRPC</a> for Kerbal Space Program that would allow me to safely land a rocket, but would be a bit smarter than simple PID regulators. I've then come across an algorithm called G-FOLD and its open source implementations:</p>
+<ul>
+<li><a href="https://github.com/oyster-catcher/HopperGuidance">HopperGuidance</a></li>
+<li><a href="https://github.com/jonnyhyman/G-FOLD-Python">G-FOLD-Python</a></li>
+</ul>
+<p>They both are based on the paper titled <em>"Lossless Convexification of Nonconvex Control
+Bound and Pointing Constraints of the Soft
+Landing Optimal Control Problem"</em>. In the first part of this series I'd like to introduce the algorithm and present a simple implementation using the Python API of <a href="https://web.casadi.org/">CasADi</a>, an <em>"open-source tool for nonlinear optimization and algorithmic differentiation."</em>. There are two optimization problems presented in this paper.</p>
+<p>$$\begin{align}
+    \min_{t_f, \mathbf{T}_c, \Gamma} \quad &amp; \| E\mathbf{r}(t_f) - \mathbf{q}\| \label{eq:p1min} \\
+    \textrm{p.o.} \quad &amp; \mathbf{x}(t) \in \mathbf{X} \quad \forall t \in [0, t_f] \label{con1} \\
+    &amp; 0 &lt; \rho_1 \leq \|\mathbf{T}_c\| \leq \rho_2, \quad \hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \|\mathbf{T}_c\| \cos{\theta} \label{con2} \\
+    &amp; m(0) = m_0, \quad m(t_f) \geq m_0 - m_f &gt; 0 \label{con3} \\
+    &amp; \mathbf{r}(0) = \mathbf{r_0}, \enspace \dot{\mathbf{r}}(0) = \dot{\mathbf{r}}_0 \label{con4} \\
+    &amp; \mathbf{e}^T_1\mathbf{r}(t_f) = 0, \enspace \dot{\mathbf{r}}(tf) = \mathbf{0} \label{con5} \\
+    &amp; \dot{\mathbf{x}}(t) = \mathbf{A}\mathbf{x}(t) + \mathbf{B}\left(\mathbf{g} + \frac{\mathbf{T}_c(t)}{m}\right) \quad \forall t \in [0, t_f] \label{con6} \\
+    &amp; \dot{m}(t) = -\alpha \Gamma(t) \label{con7} \\
+    &amp; \|\mathbf{T}_c(t)\| \leq \Gamma(t), \enspace 0 &lt; \rho_1 \leq \Gamma(t) \leq \rho_2 \label{con8} \\
+    &amp; \hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \cos{\theta} \Gamma(t) \label{con9}
+\end{align}$$</p>
+<p>Helper vectors and matrices</p>
+<p>$$\begin{align}
+\mathbf{E} = \begin{bmatrix}
+    0 &amp; 1 &amp; 0 \\
+    0 &amp; 0 &amp; 1
+\end{bmatrix}, \quad
+\mathbf{A} = \begin{bmatrix}
+    \mathbf{0} &amp; \mathbf{I} \\
+    \mathbf{0} &amp; \mathbf{0}
+\end{bmatrix}, \quad
+\mathbf{B} = \begin{bmatrix}
+    \mathbf{0} \\ \mathbf{I}
+\end{bmatrix} \\
+\mathbf{e}_1 = \begin{bmatrix}
+    1 &amp; 0 &amp; 0
+\end{bmatrix}^T, \quad
+\mathbf{e}_2 = \begin{bmatrix}
+    0 &amp; 1 &amp; 0
+\end{bmatrix}^T
+\end{align}$$</p>
+<p>Definition of the set of possible positions</p>
+<p>$$
+\mathbf{X} = { (\mathbf{r}, \mathbf{\dot{r}}) \in \mathbb{R}^6 \, : \, \|\mathbf{\dot{r}} \| \leq V_{max}, \; \|E(\mathbf{r} - \mathbf{r}(t_f))\| - \mathbf{c}^T(\mathbf{r} - \mathbf{r}(t_f) \leq 0 }
+$$</p>
+<p>where \(\mathbf{c}\) defines a cone with it's point in \(\mathbf{r}(t_f)\), parametrized with the glide slope angle \(\gamma_{gs}\)</p>
+<p>$$
+\mathbf{c} \triangleq \frac{\mathbf{e}_1}{\tan{\gamma_{gs}}}, \quad \gamma_{gs} \in (0,\, \pi / 2).
+$$</p>
+<p>$$
+\begin{align}
+\min_{t_f, \mathbf{T}_c, \Gamma} \quad &amp; \int_0^{t_f} \Gamma(t)dt \\
+&amp; \|E\mathbf{r}(t_f) - \mathbf{q}\| \leq \|d^*_{P1} - \mathbf{q}\|
+\end{align}
+$$</p>
+<p>Następujące podstawienie zostało wykonane przez autorów publikacji, aby pozbyć się nieliniowości w dynamice modelu spowodowanych przez \(\mathbf{T}_c/m\):</p>
+<p>$$
+\sigma \triangleq \frac{\Gamma}{m}, \quad \mathbf{u} \triangleq \frac{\mathbf{T}_c}{m}, \quad z \triangleq \ln{m}
+$$</p>
+<p>Mass loss dynamics</p>
+<p>$$
+\dot{z} = \frac{\dot{m}(t)}{m(t)} = -\alpha\sigma(t)
+$$</p>
+<p>$$
+\begin{align}
+    \|\mathbf{u}(t)\| &amp; \leq \sigma(t), \quad \mathbf{\hat{n}}^T\mathbf{u}(t) \geq \cos{\theta}\sigma(t) \quad \forall t \in [0, t_f] \nonumber \\
+    \rho_1e^{-z(t)} &amp; \leq \sigma(t) \leq \rho_2e^{-z(t)} \quad \forall t \in [0, t_f] \label{eq:noncvx}
+\end{align}
+$$</p>
+<p>$$
+\begin{align}
+    \sigma(t) &amp; \geq \rho_1e^{-z_0}\left[ 1 - (z(t) - z_0(t)) + \frac{(z(t) - z_0(t))^2}{2}\right] \quad \forall t \in [0, t_f] \\
+    \sigma(t) &amp; \leq \rho_2e^{-z_0}[1 - (z(t) - z_0(t))] \quad \forall t \in [0, t_f]
+\end{align}
+$$</p>
+<p>gdzie \(z_0(t) = \ln{m_0 - \alpha\rho_2 t}\), a \(m_0\) jest masą początkową pojazdu. Warto zauważyć, że z uwagi na obecność zmiennej \(z(t)^2\) dolne ograniczenie jest nieliniowe.</p>
+<p>$$
+\begin{align}
+    \min_{T, \mathbf{u}, \sigma} \quad &amp; \int_0^{T} \sigma(t)dt \\
+    \textrm{p.o.} \quad &amp; \mathbf{x}[k] \in \mathbf{X} \quad \forall k \in [0, N_t] \\
+    &amp; \mathbf{x}[k] = \begin{bmatrix}
+        \mathbf{r}[k] \\
+        \mathbf{v}[k]
+    \end{bmatrix} \\
+    &amp; \mathbf{\dot{r}}[k] = T \cdot \mathbf{v}[k] \\
+    &amp; \mathbf{\dot{v}}[k] = T \cdot ( \mathbf{u}[k] + \mathbf{g}) \\
+    &amp; \dot{z} = - T \cdot \alpha \sigma(\tau) \\
+    &amp; \rho_1e^{-z_0[k]}\left[ 1 - (z[k] - z_0[k])) + \frac{(z[k] - z_0[k])^2}{2}\right]  - \sigma[k] \leq 0 \\
+    &amp; \sigma[k] - \rho_2e^{-z_0[k]}[1 - (z[k] - z_0[k])]\leq 0 \\
+    &amp; z_0[k] = \ln{(m_0 - \alpha\rho_2 t)}, \quad t = kT / N_t \\
+    &amp; z[0] = \ln{m_0}, \quad z[N_t] \geq \ln(m_0 - m_f), \quad m_0 - m_f &gt; 0 \\
+    &amp; \mathbf{r}[0] = \mathbf{r}_0, \quad \dot{\mathbf{r}}[0] = \dot{\mathbf{r}}_0  \\
+    &amp; \mathbf{r}[N_t][0:2] = [0, 0]^T, \enspace \dot{\mathbf{r}}[N_t] = [0, 0, 0]^T \\
+    &amp; \|\mathbf{u}[k]\| - \sigma[k] \leq 0 \\
+    &amp; \cos{\theta} \sigma[k] - \mathbf{u}[k][0] \leq 0 \\
+    &amp; \mathbf{x}[k+1] - \mathbf{x}[k] - \Gamma_f(\mathbf{x}[k], \mathbf{u}[k], T) = \mathbf{0}
+\end{align}
+$$</p>
+<p>Experiment 1.</p>
+<p>$$
+\begin{align}
+    \theta \in &amp; {\pi, \, \pi/2, \, \pi/4 } \\
+    m_f = &amp; 300 \\
+    m_0 = &amp; 2000 \\
+    \alpha = &amp; 5 \cdot 10^{-4} \\
+    T_{max} = &amp; 24000 \\
+    \rho_1 = &amp; 0.2 \cdot T_{max} \\
+    \rho_2 = &amp; 0.8 \cdot T_{max} \\
+    \mathbf{r}_0 &amp; = [2400,\, 450,\, -330]^T \\
+    \mathbf{v}_0 &amp; = [-10,\, -40,\, 10]^T \\
+    \mathbf{g} &amp; = [-3.71,\, 0,\, 0]^T 
+\end{align}
+$$</p>
+<p>Experiment 2.</p>
+<p>$$
+\begin{align}
+    \theta &amp; = 120^\circ \\
+    \gamma_{gs} &amp; = 30^\circ \\
+    m_f &amp; = 350 \\
+    \mathbf{r}_0 &amp; = [2400,\, 3400,\, 0]^T \\
+    \mathbf{v}_0 &amp; = [-40,\, 45,\, 0]^T 
+\end{align}
+$$</p>
+        </article>
+      </div>
+    </main>
+    <footer>
+      <div class="footer-content">
+        <p>&copy; 2024 Krzysztof Jóskowiak</p>
+      </div>
+    </footer>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  </body>
+</html>
