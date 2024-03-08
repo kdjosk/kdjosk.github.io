@@ -42,7 +42,21 @@
 </ul>
 <p>They both are based on the paper titled <em>"Lossless Convexification of Nonconvex Control
 Bound and Pointing Constraints of the Soft
-Landing Optimal Control Problem"</em>. In the first part of this series I'd like to introduce the algorithm and present a simple implementation using the Python API of <a href="https://web.casadi.org/">CasADi</a>, an <em>"open-source tool for nonlinear optimization and algorithmic differentiation."</em>. There are two optimization problems presented in this paper.</p>
+Landing Optimal Control Problem"</em>. In the first part of this series I'd like to introduce the algorithm and present a simple implementation using the Python API of <a href="https://web.casadi.org/">CasADi</a>, an <em>"open-source tool for nonlinear optimization and algorithmic differentiation."</em>. There are two consecutive optimization problems presented in this paper. The first one tries to land the rocket as close to the target landing point \(\mathbf{q}\) as possible, thus returning some optimal landing point \(\mathbf{d}^*_{P1}\) The second one tries to improve on the previous solution to use as little fuel as possible while landing not further from \(\mathbf{q}\) than \(\mathbf{d}^*_{P1}\).</p>
+<h2>Engine characteristics</h2>
+<p>The main characteristic of a rocket engine is specific impulse \(I_{sp}\). From wikipedia we read:</p>
+<blockquote>
+<p>Specific impulse, measured in seconds, effectively means how many seconds this propellant, when paired with this engine, can accelerate its own initial mass at 1 g. The longer it can accelerate its own mass, the more delta-V it delivers to the whole system.</p>
+<p>In other words, given a particular engine and a mass of a particular propellant, specific impulse measures for how long a time that engine can exert a continuous force (thrust) until fully burning that mass of propellant. A given mass of a more energy-dense propellant can burn for a longer duration than some less energy-dense propellant made to exert the same force while burning in an engine. Different engine designs burning the same propellant may not be equally efficient at directing their propellant's energy into effective thrust. </p>
+</blockquote>
+<p>$$
+I_{sp} = \frac{F \Delta t}{g_0 \Delta m}
+$$</p>
+<p>The \(\alpha\) parameter is defined w.r.t. the specific impulse 
+$$
+\alpha = \frac{1}{I_{sp}g_0}
+$$</p>
+<h2>The first optimization problem</h2>
 <p>$$\begin{align}
     \min_{t_f, \mathbf{T}_c, \Gamma} \quad &amp; \| E\mathbf{r}(t_f) - \mathbf{q}\| \label{eq:p1min} \\
     \textrm{p.o.} \quad &amp; \mathbf{x}(t) \in \mathbf{X} \quad \forall t \in [0, t_f] \label{con1} \\
@@ -86,7 +100,7 @@ $$</p>
 <p>$$
 \begin{align}
 \min_{t_f, \mathbf{T}_c, \Gamma} \quad &amp; \int_0^{t_f} \Gamma(t)dt \\
-&amp; \|E\mathbf{r}(t_f) - \mathbf{q}\| \leq \|d^*_{P1} - \mathbf{q}\|
+&amp; \|E\mathbf{r}(t_f) - \mathbf{q}\| \leq \|\mathbf{d}^*_{P1} - \mathbf{q}\|
 \end{align}
 $$</p>
 <p>Następujące podstawienie zostało wykonane przez autorów publikacji, aby pozbyć się nieliniowości w dynamice modelu spowodowanych przez \(\mathbf{T}_c/m\):</p>
@@ -157,6 +171,124 @@ $$</p>
     \mathbf{v}_0 &amp; = [-40,\, 45,\, 0]^T 
 \end{align}
 $$</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span> <span class="nn">casadi</span>
+<span class="kn">import</span> <span class="nn">casadi.casadi</span> <span class="k">as</span> <span class="nn">cs</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">Solution</span><span class="p">:</span>
+    <span class="n">T</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span>
+    <span class="n">r</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">v</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">z</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">nu</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">sigma</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">nu_mag</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">t_grid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+
+
+<span class="k">def</span> <span class="nf">run_problem</span><span class="p">(</span>
+    <span class="n">N</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">theta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">gamma_gs</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">m_fuel</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">m_total</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">rho_1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">rho_2</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">v_max</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">r0</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">v0</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">g</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="n">opti</span> <span class="o">=</span> <span class="n">casadi</span><span class="o">.</span><span class="n">Opti</span><span class="p">()</span>
+
+    <span class="n">X</span> <span class="o">=</span> <span class="n">opti</span><span class="o">.</span><span class="n">variable</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="n">N</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:]</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">,</span> <span class="p">:]</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="c1"># Initial states</span>
+    <span class="n">z0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">m_total</span><span class="p">)</span>
+    <span class="n">opti</span><span class="o">.</span><span class="n">subject_to</span><span class="p">(</span><span class="n">r</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">r0</span><span class="p">)</span>
+    <span class="n">opti</span><span class="o">.</span><span class="n">subject_to</span><span class="p">(</span><span class="n">v</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">v0</span><span class="p">)</span>
+    <span class="n">opti</span><span class="o">.</span><span class="n">subject_to</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">z0</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+        <span class="n">opti</span><span class="o">.</span><span class="n">set_initial</span><span class="p">(</span><span class="n">X</span><span class="p">[:,</span> <span class="n">i</span><span class="p">],</span> <span class="p">[</span><span class="o">*</span><span class="n">r0</span><span class="p">,</span> <span class="o">*</span><span class="n">v0</span><span class="p">,</span> <span class="n">z0</span><span class="p">])</span>
+
+    <span class="n">opti</span><span class="o">.</span><span class="n">set_initial</span><span class="p">(</span><span class="n">X</span><span class="p">[:,</span> <span class="n">N</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">z0</span><span class="p">])</span>
+
+    <span class="n">U</span> <span class="o">=</span> <span class="n">opti</span><span class="o">.</span><span class="n">variable</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span>
+    <span class="n">nu</span> <span class="o">=</span> <span class="n">U</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:]</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">U</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="n">T</span> <span class="o">=</span> <span class="n">opti</span><span class="o">.</span><span class="n">variable</span><span class="p">()</span>
+
+    <span class="n">dt</span> <span class="o">=</span> <span class="n">T</span> <span class="o">/</span> <span class="n">N</span>
+
+    <span class="k">def</span> <span class="nf">dynamics</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">cs</span><span class="o">.</span><span class="n">vertcat</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">],</span>
+            <span class="n">g</span> <span class="o">+</span> <span class="n">u</span><span class="p">[:</span><span class="mi">3</span><span class="p">],</span>
+            <span class="o">-</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">u</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span>
+        <span class="p">)</span>
+
+    <span class="n">cost</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+        <span class="n">X_next</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span> <span class="n">k</span><span class="p">]</span> <span class="o">+</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">dynamics</span><span class="p">(</span><span class="n">X</span><span class="p">[:,</span> <span class="n">k</span><span class="p">],</span> <span class="n">U</span><span class="p">[:,</span> <span class="n">k</span><span class="p">])</span>
+        <span class="n">nu_k</span><span class="p">,</span> <span class="n">sigma_k</span> <span class="o">=</span> <span class="n">U</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="n">k</span><span class="p">],</span> <span class="n">U</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span>
+        <span class="n">cost</span> <span class="o">+=</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">sigma_k</span>
+        <span class="n">opti</span><span class="o">.</span><span class="n">subject_to</span><span class="p">(</span><span class="n">X</span><span class="p">[:,</span> <span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">X_next</span><span class="p">)</span>
+        <span class="n">opti</span><span class="o">.</span><span class="n">subject_to</span><span class="p">(</span><span class="n">cs</span><span class="o">.</span><span class="n">norm_2</span><span class="p">(</span><span class="n">nu_k</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">sigma_k</span><span class="p">)</span>
+        <span class="n">opti</span><span class="o">.</span><span class="n">set_initial</span><span class="p">(</span><span class="n">nu_k</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+        <span class="n">opti</span><span class="o">.</span><span class="n">set_initial</span><span class="p">(</span><span class="n">sigma_k</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">t</span> <span class="o">=</span> <span class="n">T</span> <span class="o">*</span> <span class="n">k</span> <span class="o">/</span> <span class="n">N</span>
+        <span class="n">z0</span> <span class="o">=</span> <span class="n">cs</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">m_total</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">rho_2</span> <span class="o">*</span> <span class="n">t</span><span class="p">)</span>
+        <span class="n">zk</span> <span class="o">=</span> <span class="n">X_next</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span>
+        <span class="n">opti</span><span class="o">.</span><span class="n">subject_to</span><span class="p">(</span><span class="n">rho_1</span> <span class="o">*</span> <span class="n">cs</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">z0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">zk</span> <span class="o">-</span> <span class="n">z0</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">zk</span> <span class="o">-</span> <span class="n">z0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">sigma_k</span><span class="p">)</span>
+        <span class="n">opti</span><span class="o">.</span><span class="n">subject_to</span><span class="p">(</span><span class="n">sigma_k</span> <span class="o">&lt;=</span> <span class="n">rho_2</span> <span class="o">*</span> <span class="n">cs</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">z0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">zk</span> <span class="o">-</span> <span class="n">z0</span><span class="p">)))</span>
+        <span class="n">opti</span><span class="o">.</span><span class="n">subject_to</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span> <span class="o">*</span> <span class="n">sigma_k</span> <span class="o">&lt;=</span> <span class="n">nu_k</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">opti</span><span class="o">.</span><span class="n">subject_to</span><span class="p">(</span><span class="n">cs</span><span class="o">.</span><span class="n">norm_2</span><span class="p">(</span><span class="n">X_next</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="n">v_max</span><span class="p">)</span>
+
+    <span class="c1"># Glide slope constraint</span>
+    <span class="n">x_f</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span> <span class="n">N</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+        <span class="n">x_k</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span> <span class="n">k</span><span class="p">]</span>
+        <span class="n">opti</span><span class="o">.</span><span class="n">subject_to</span><span class="p">(</span>
+            <span class="n">cs</span><span class="o">.</span><span class="n">norm_2</span><span class="p">(</span><span class="n">x_k</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="n">x_f</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">])</span> <span class="o">-</span> <span class="p">(</span><span class="n">x_k</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">x_f</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">tan</span><span class="p">(</span><span class="n">gamma_gs</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mf">0.</span>   
+        <span class="p">)</span>
+
+    <span class="c1"># Stop in 0, 0, 0</span>
+    <span class="n">opti</span><span class="o">.</span><span class="n">subject_to</span><span class="p">(</span><span class="n">X</span><span class="p">[:</span><span class="mi">6</span><span class="p">,</span> <span class="n">N</span><span class="p">]</span> <span class="o">==</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">6</span><span class="p">)</span>
+
+    <span class="n">opti</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span><span class="n">cost</span><span class="p">)</span>
+    <span class="n">opti</span><span class="o">.</span><span class="n">solver</span><span class="p">(</span><span class="s1">&#39;ipopt&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Duration</span>
+    <span class="n">opti</span><span class="o">.</span><span class="n">subject_to</span><span class="p">(</span><span class="mf">1.2</span> <span class="o">&lt;=</span> <span class="n">T</span><span class="p">)</span>
+    <span class="n">opti</span><span class="o">.</span><span class="n">subject_to</span><span class="p">(</span><span class="n">T</span> <span class="o">&lt;=</span> <span class="mf">70.</span><span class="p">)</span>
+    <span class="n">opti</span><span class="o">.</span><span class="n">set_initial</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sol</span> <span class="o">=</span> <span class="n">opti</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Solution</span><span class="p">(</span>
+        <span class="n">T</span><span class="o">=</span><span class="n">sol</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">T</span><span class="p">),</span>
+        <span class="n">r</span><span class="o">=</span><span class="n">sol</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">r</span><span class="p">),</span>
+        <span class="n">v</span><span class="o">=</span><span class="n">sol</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">v</span><span class="p">),</span>
+        <span class="n">z</span><span class="o">=</span><span class="n">sol</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">z</span><span class="p">),</span>
+        <span class="n">nu</span><span class="o">=</span><span class="n">sol</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">nu</span><span class="p">),</span>
+        <span class="n">sigma</span><span class="o">=</span><span class="n">sol</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">sigma</span><span class="p">),</span>
+        <span class="n">nu_mag</span><span class="o">=</span><span class="n">sol</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">cs</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">nu</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">nu</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">nu</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span><span class="o">**</span><span class="mi">2</span><span class="p">)),</span>
+        <span class="n">t_grid</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">sol</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">T</span><span class="p">),</span> <span class="n">N</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="p">)</span>
+</code></pre></div>
         </article>
       </div>
     </main>

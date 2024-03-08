@@ -13,7 +13,27 @@ During my time at the university I was trying to implement a controller with [kR
 
 They both are based on the paper titled _"Lossless Convexification of Nonconvex Control
 Bound and Pointing Constraints of the Soft
-Landing Optimal Control Problem"_. In the first part of this series I'd like to introduce the algorithm and present a simple implementation using the Python API of [CasADi](https://web.casadi.org/), an _"open-source tool for nonlinear optimization and algorithmic differentiation."_. There are two consecutive optimization problems presented in this paper. The first one tries to land the rocket as close to the landing point as possible. The second one tries to improve on the previous solution
+Landing Optimal Control Problem"_. In the first part of this series I'd like to introduce the algorithm and present a simple implementation using the Python API of [CasADi](https://web.casadi.org/), an _"open-source tool for nonlinear optimization and algorithmic differentiation."_. There are two consecutive optimization problems presented in this paper. The first one tries to land the rocket as close to the target landing point \\(\mathbf{q}\\) as possible, thus returning some optimal landing point \\(\mathbf{d}^\*\_{P1}\\) The second one tries to improve on the previous solution to use as little fuel as possible while landing not further from \\(\mathbf{q}\\) than \\(\mathbf{d}^\*\_{P1}\\).
+
+## Engine characteristics
+
+The main characteristic of a rocket engine is specific impulse \\(I_{sp}\\). From wikipedia we read:
+
+>Specific impulse, measured in seconds, effectively means how many seconds this propellant, when paired with this engine, can accelerate its own initial mass at 1 g. The longer it can accelerate its own mass, the more delta-V it delivers to the whole system.
+
+>In other words, given a particular engine and a mass of a particular propellant, specific impulse measures for how long a time that engine can exert a continuous force (thrust) until fully burning that mass of propellant. A given mass of a more energy-dense propellant can burn for a longer duration than some less energy-dense propellant made to exert the same force while burning in an engine. Different engine designs burning the same propellant may not be equally efficient at directing their propellant's energy into effective thrust. 
+
+$$
+I_{sp} = \frac{F \Delta t}{g_0 \Delta m}
+$$
+
+The \\(\alpha\\) parameter is defined w.r.t. the specific impulse 
+$$
+\alpha = \frac{1}{I_{sp}g_0}
+$$
+
+## The first optimization problem
+
 
 $$\begin{align}
     \min_{t_f, \mathbf{T}_c, \Gamma} \quad & \| E\mathbf{r}(t_f) - \mathbf{q}\| \label{eq:p1min} \\\\
@@ -65,7 +85,7 @@ $$
 $$
 \begin{align}
 \min_{t_f, \mathbf{T}_c, \Gamma} \quad & \int_0^{t_f} \Gamma(t)dt \\\\
-& \|E\mathbf{r}(t_f) - \mathbf{q}\| \leq \|d^\*\_{P1} - \mathbf{q}\|
+& \|E\mathbf{r}(t_f) - \mathbf{q}\| \leq \|\mathbf{d}^\*\_{P1} - \mathbf{q}\|
 \end{align}
 $$
 
@@ -149,3 +169,122 @@ $$
 \end{align}
 $$
 
+```python
+import casadi
+import casadi.casadi as cs
+import numpy as np
+from dataclasses import dataclass
+
+
+@dataclass
+class Solution:
+    T: np.float64
+    r: np.ndarray
+    v: np.ndarray
+    z: np.ndarray
+    nu: np.ndarray
+    sigma: np.ndarray
+    nu_mag: np.ndarray
+    t_grid: np.ndarray
+
+
+def run_problem(
+    N: int,
+    theta: float,
+    gamma_gs: float,
+    m_fuel: float,
+    m_total: float,
+    alpha: float,
+    rho_1: float,
+    rho_2: float,
+    v_max: float,
+    r0: np.ndarray,
+    v0: np.ndarray,
+    g: np.ndarray,
+):
+    opti = casadi.Opti()
+
+    X = opti.variable(7, N + 1)
+    r = X[:3, :]
+    v = X[3:6, :]
+    z = X[6, :]
+
+    # Initial states
+    z0 = np.log(m_total)
+    opti.subject_to(r[:, 0] == r0)
+    opti.subject_to(v[:, 0] == v0)
+    opti.subject_to(z[0] == z0)
+
+    for i in range(N):
+        opti.set_initial(X[:, i], [*r0, *v0, z0])
+    
+    opti.set_initial(X[:, N], [0, 0, 0, 0, 0, 0, z0])
+
+    U = opti.variable(4, N)
+    nu = U[:3, :]
+    sigma = U[3, :]
+
+    T = opti.variable()
+
+    dt = T / N
+
+    def dynamics(x, u):
+        return cs.vertcat(
+            x[3:6],
+            g + u[:3],
+            -alpha * u[3],
+        )
+
+    cost = 0
+    for k in range(N):
+        X_next = X[:, k] + dt * dynamics(X[:, k], U[:, k])
+        nu_k, sigma_k = U[:3, k], U[3, k]
+        cost += dt * sigma_k
+        opti.subject_to(X[:, k+1] == X_next)
+        opti.subject_to(cs.norm_2(nu_k) <= sigma_k)
+        opti.set_initial(nu_k, [1, 0, 0])
+        opti.set_initial(sigma_k, 1)
+
+        t = T * k / N
+        z0 = cs.log(m_total - alpha * rho_2 * t)
+        zk = X_next[6]
+        opti.subject_to(rho_1 * cs.exp(-z0) * (1 - (zk - z0) + 0.5 * (zk - z0)**2) <= sigma_k)
+        opti.subject_to(sigma_k <= rho_2 * cs.exp(-z0) * (1 - (zk - z0)))
+        opti.subject_to(np.cos(theta) * sigma_k <= nu_k[0])
+        opti.subject_to(cs.norm_2(X_next[3:6]) <= v_max)
+
+    # Glide slope constraint
+    x_f = X[:, N]
+    for k in range(N):
+        x_k = X[:, k]
+        opti.subject_to(
+            cs.norm_2(x_k[1:3] - x_f[1:3]) - (x_k[0] - x_f[0]) / np.tan(gamma_gs) <= 0.   
+        )
+ 
+    # Stop in 0, 0, 0
+    opti.subject_to(X[:6, N] == [0] * 6)
+
+    opti.minimize(cost)
+    opti.solver('ipopt')
+
+    # Duration
+    opti.subject_to(1.2 <= T)
+    opti.subject_to(T <= 70.)
+    opti.set_initial(T, 10)
+
+    try:
+        sol = opti.solve()
+    except RuntimeError as e:
+        print(e)
+
+    return Solution(
+        T=sol.value(T),
+        r=sol.value(r),
+        v=sol.value(v),
+        z=sol.value(z),
+        nu=sol.value(nu),
+        sigma=sol.value(sigma),
+        nu_mag=sol.value(cs.sqrt(nu[0, :]**2 + nu[1, :]**2 + nu[2, :]**2)),
+        t_grid=np.linspace(0, sol.value(T), N + 1)
+    )
+```
