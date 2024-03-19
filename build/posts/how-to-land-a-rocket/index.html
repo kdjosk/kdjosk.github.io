@@ -40,34 +40,116 @@
 <li><a href="https://github.com/oyster-catcher/HopperGuidance">HopperGuidance</a></li>
 <li><a href="https://github.com/jonnyhyman/G-FOLD-Python">G-FOLD-Python</a></li>
 </ul>
-<p>They both are based on the paper titled <em>"Lossless Convexification of Nonconvex Control
+<p>They both are based on the paper titled <a href="http://larsblackmore.com/iee_tcst13.pdf"><em>"Lossless Convexification of Nonconvex Control
 Bound and Pointing Constraints of the Soft
-Landing Optimal Control Problem"</em>. In the first part of this series I'd like to introduce the algorithm and present a simple implementation using the Python API of <a href="https://web.casadi.org/">CasADi</a>, an <em>"open-source tool for nonlinear optimization and algorithmic differentiation."</em>. There are two consecutive optimization problems presented in this paper. The first one tries to land the rocket as close to the target landing point \(\mathbf{q}\) as possible, thus returning some optimal landing point \(\mathbf{d}^*_{P1}\) The second one tries to improve on the previous solution to use as little fuel as possible while landing not further from \(\mathbf{q}\) than \(\mathbf{d}^*_{P1}\).</p>
+Landing Optimal Control Problem"</em></a>. In the first part of this series I'd like to introduce the algorithm and present a simple implementation using the Python API of <a href="https://web.casadi.org/">CasADi</a>, which is an open-source tool for defining and solving nonlinear optimization problems that provides algorithmic differentiation (so you don't have to calculate Jacobians and Hessians of the yourself). There are two consecutive optimization problems presented in this paper. The first one tries to land the rocket as close to the target landing point \(\mathbf{q}\) as possible, thus returning some optimal landing point \(\mathbf{d}^*_{P1}\) The second one tries to improve on the previous solution to use as little fuel as possible while landing not further from \(\mathbf{q}\) than \(\mathbf{d}^*_{P1}\).</p>
 <h2>Engine characteristics</h2>
-<p>The main characteristic of a rocket engine is specific impulse \(I_{sp}\). From wikipedia we read:</p>
-<blockquote>
-<p>Specific impulse, measured in seconds, effectively means how many seconds this propellant, when paired with this engine, can accelerate its own initial mass at 1 g. The longer it can accelerate its own mass, the more delta-V it delivers to the whole system.</p>
-<p>In other words, given a particular engine and a mass of a particular propellant, specific impulse measures for how long a time that engine can exert a continuous force (thrust) until fully burning that mass of propellant. A given mass of a more energy-dense propellant can burn for a longer duration than some less energy-dense propellant made to exert the same force while burning in an engine. Different engine designs burning the same propellant may not be equally efficient at directing their propellant's energy into effective thrust. </p>
-</blockquote>
+<p>The main characteristic of a rocket engine is specific impulse \(I_{sp}\). To explain what it means in simple terms: it's a measure of how effectively the engine converts the propellant to the thrust force. To derive it, suppose we have a specific engine with a specific propellant. The engine ejects \(dm\) kilograms of propellant in \(dt\) seconds. Therefore \(\dot{m} = dm / dt\) gives us the mass flow rate. The engine also exerts a given thrust force \(F\). We then define the initial propellant mass \(m_0 \) as \(m_0 = F/g_0\). The time that the engine takes to burn through all of this propellant is the specific impulse:</p>
 <p>$$
-I_{sp} = \frac{F \Delta t}{g_0 \Delta m}
+I_{sp} = \frac{F}{g_0 \dot{m}}
 $$</p>
-<p>The \(\alpha\) parameter is defined w.r.t. the specific impulse 
-$$
+<p>The authors of the paper then define the \(\alpha\) parameter as a function of the specific impulse </p>
+<p>$$
 \alpha = \frac{1}{I_{sp}g_0}
 $$</p>
-<h2>The first optimization problem</h2>
+<h2>Lander model</h2>
+<p>For the purpose of formulating the model, the authors of the paper treat the vehicle as a point mass. Therefore the model consists of position and velocity in 3D space, omitting orientation.</p>
+<p>$$
+\mathbf{X} = (\mathbf{r}, \mathbf{\dot{r}}) \in \mathbb{R}^6
+$$</p>
+<p>The 7th state variable is mass \(m\). The vehicle is being controlled only by the thrust force \(\mathbf{T}_c\). Therefore we can write the model equations as:</p>
 <p>$$\begin{align}
-    \min_{t_f, \mathbf{T}_c, \Gamma} \quad &amp; \| E\mathbf{r}(t_f) - \mathbf{q}\| \label{eq:p1min} \\
-    \textrm{p.o.} \quad &amp; \mathbf{x}(t) \in \mathbf{X} \quad \forall t \in [0, t_f] \label{con1} \\
-    &amp; 0 &lt; \rho_1 \leq \|\mathbf{T}_c\| \leq \rho_2, \quad \hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \|\mathbf{T}_c\| \cos{\theta} \label{con2} \\
-    &amp; m(0) = m_0, \quad m(t_f) \geq m_0 - m_f &gt; 0 \label{con3} \\
-    &amp; \mathbf{r}(0) = \mathbf{r_0}, \enspace \dot{\mathbf{r}}(0) = \dot{\mathbf{r}}_0 \label{con4} \\
-    &amp; \mathbf{e}^T_1\mathbf{r}(t_f) = 0, \enspace \dot{\mathbf{r}}(tf) = \mathbf{0} \label{con5} \\
-    &amp; \dot{\mathbf{x}}(t) = \mathbf{A}\mathbf{x}(t) + \mathbf{B}\left(\mathbf{g} + \frac{\mathbf{T}_c(t)}{m}\right) \quad \forall t \in [0, t_f] \label{con6} \\
-    &amp; \dot{m}(t) = -\alpha \Gamma(t) \label{con7} \\
-    &amp; \|\mathbf{T}_c(t)\| \leq \Gamma(t), \enspace 0 &lt; \rho_1 \leq \Gamma(t) \leq \rho_2 \label{con8} \\
-    &amp; \hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \cos{\theta} \Gamma(t) \label{con9}
+\dot{\mathbf{x}}(t) &amp; = \begin{bmatrix}
+    \mathbf{\dot{r}}(t)\\
+    \mathbf{g} + \frac{\mathbf{T}_c(t)}{m}
+\end{bmatrix} \\
+\dot{m}(t) &amp; = -\alpha \|\mathbf{T}_c(t)\| \\
+\end{align}$$</p>
+<p>The authors of the paper use a helper matrix \(\mathbf{A}\) and a helper vector \(\mathbf{B}\) to write this equation:</p>
+<p>$$\begin{align}
+\dot{\mathbf{x}}(t) &amp; = \mathbf{A}\mathbf{x}(t) + \mathbf{B}\left(\mathbf{g} + \frac{\mathbf{T}_c(t)}{m}\right) \\
+\dot{m}(t) &amp; = -\alpha \|\mathbf{T}_c(t)\| \\
+\end{align}$$</p>
+<p>Where</p>
+<p>$$
+\mathbf{A} = \begin{bmatrix}
+    \mathbf{0}_{3\times3} &amp; \mathbf{I}_{3\times3} \\
+    \mathbf{0}_{3\times3} &amp; \mathbf{0}_{3\times3}
+\end{bmatrix}, \quad
+\mathbf{B} = \begin{bmatrix}
+    \mathbf{0}_{3\times3} \\ \mathbf{I}_{3\times3}
+\end{bmatrix}
+$$</p>
+<p>I've made one simplification with regards to the model presented in the paper, which is not taking the rotation of the planet into account.</p>
+<h2>Optimization constraints</h2>
+<p>First let's summarize what we're given:</p>
+<ul>
+<li>\(\mathbf{r}_0\) - initial position</li>
+<li>\(\dot{\mathbf{r}}_0\) - initial velocity</li>
+<li>\(\mathbf{g}\) - vector of gravitational acceleration</li>
+<li>\(m_0\) - inital mass of the vehicle</li>
+<li>\(m_f\) - initial mass of the propellant</li>
+<li>\(\theta\) - max angle of thrust vector w.r.t the vertical direction</li>
+<li>\(\alpha\) - parameter characterizing the engine</li>
+<li>\(\rho_1\) - lower bound for thrust magnitude (rocket engines don't operate from 0% to 100%, but e.g. from 60% to 100%)</li>
+<li>\(\rho_2\) - upper bound for thrust magnitude</li>
+</ul>
+<p>The authors also define the set of all feasible positions and velocities accordingly:</p>
+<p>$$
+\mathbf{X} = { (\mathbf{r}, \mathbf{\dot{r}}) \in \mathbb{R}^6 \, : \, \|\mathbf{\dot{r}} \| \leq V_{max}, \; \|E(\mathbf{r} - \mathbf{r}(t_f))\| - \mathbf{c}^T(\mathbf{r} - \mathbf{r}(t_f)) \leq 0 } 
+$$</p>
+<p>where \(\mathbf{c}\) defines a cone with it's point in \(\mathbf{r}(t_f)\), parametrized with the glide slope angle \(\gamma_{gs}\)</p>
+<p>$$
+\mathbf{c} \triangleq \frac{\mathbf{e}_1}{\tan{\gamma_{gs}}}, \quad \gamma_{gs} \in (0,\, \pi / 2).
+$$</p>
+<p>The \(\mathbf{X}\) set is used to define a constraint on the state variable \(\mathbf{x}(t)\)</p>
+<p>$$
+\mathbf{x}(t) \in \mathbf{X} \quad \forall t \in [0, t_f]
+$$</p>
+<p>Then for the hard part, the constraints on thrust. They consist of lower and upper bounds for magnitude and pointing constraint for direction. The thrust is a 3D vector, therefore the upper bound constraint \(\|\mathbf{T}_c\| \leq \rho_2 \) defines a ball. It's shown on the diagram in blue. The lower bound constraint \(0 \lt \rho_1 \leq \|\mathbf{T}_c\| \) cuts out a smaller ball from the bigger one, making the constraint a non-convex shape. It's shown on the diagram in red. Lastly, the thrust pointing constraint \( \hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \|\mathbf{T}_c\|\cos{\theta}\) is a cone, shown on the diagram in green. The vertical direction normal vector \(\hat{\mathbf{n}} = \begin{bmatrix} 1 &amp; 0 &amp; 0 \end{bmatrix}^T\) points along the x axis. This constraint prohibits the lander from changing the attitude too much. In the paper you can find a 2D cross-section of this diagram.</p>
+<p><img src="/static/thrust_constraint.svg" alt="Thrust constraints" style="width:90%;"/></p>
+<h2>Nonconvex optimization problem</h2>
+<p>Taking the model and the constraints defined in previous sections into account, the authors of the paper formulate the 1st iteration of the two problems, which is unfortunately non-convex, thus not guaranteed to be solved by interior point numerical methods.</p>
+<p>$$\begin{align}
+    \min_{t_f, \mathbf{T}_c} \quad &amp; \| E\mathbf{r}(t_f) - \mathbf{q}\| \\
+    \textrm{s.t.} \quad &amp; \dot{\mathbf{x}}(t) = \mathbf{A}\mathbf{x}(t) + \mathbf{B}\left(\mathbf{g} + \frac{\mathbf{T}_c(t)}{m}\right) \quad \forall t \in [0, t_f] \\
+    &amp; \dot{m}(t) = -\alpha \|\mathbf{T}_c(t)\| \\
+    &amp; \mathbf{x}(t) \in \mathbf{X} \quad \forall t \in [0, t_f] \\
+    &amp; 0 &lt; \rho_1 \leq \|\mathbf{T}_c\| \leq \rho_2, \quad \hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \|\mathbf{T}_c\| \cos{\theta} \\
+    &amp; m(0) = m_0, \quad m(t_f) \geq m_0 - m_f &gt; 0 \\
+    &amp; \mathbf{r}(0) = \mathbf{r}_0, \enspace \dot{\mathbf{r}}(0) = \dot{\mathbf{r}}_0 \\
+    &amp; \mathbf{e}^T_1\mathbf{r}(t_f) = 0, \enspace \dot{\mathbf{r}}(tf) = \mathbf{0} \\
+\end{align}$$</p>
+<p>And the second problem, which uses the solution from the first problem as a starting point and aims to optimize fuel usage</p>
+<p>$$\begin{align}
+    \min_{t_f, \mathbf{T}_c} \quad &amp; \int_{0}^{t_f} \alpha\|\mathbf{T}_c(t)\|dt \\
+    \textrm{s.t.}\quad &amp; \textrm{dynamics and constraints in problem 1.} \\
+    &amp; \|E\mathbf{r}(t_f) - \mathbf{q}\| \leq \|\mathbf{d}^*_{P1} - \mathbf{q}\| \\
+\end{align}$$</p>
+<h2>Relaxation of the nonconvex thrust constraints</h2>
+<p>As mentioned before, the solution space is non-convex, therefore the authors propose adding an additional dimension to form a 4D \(\mathbf{T}_c-\Gamma\) solution space, which is designed to be convex. The new \(\Gamma(t)\) variable is used to pose the following constraints on the thrust vector</p>
+<ol>
+<li>convex upper bound constraint \(\|\mathbf{T}_c(t)\| \leq \Gamma(T)\)</li>
+<li>convex thrust pointing constraint \(\hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \Gamma(t)\cos{\theta}\). (compare with the previous version: \(\hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \|\mathbf{T}_c(t) \|\cos{\theta}\)). You can find detailed diagrams of how it works in the original paper, but to explain it in simple terms: </li>
+</ol>
+<p>$$\begin{align}
+&amp;  \\
+&amp;  \\
+&amp; \rho_1 \leq \Gamma(t) \leq \rho_2
+\end{align}$$</p>
+<p><img src="/static/relaxed_thrust_constraint.svg" alt="Relaxed thrust constraints" style="width:90%;"/></p>
+<p>The full form of the optimization problem is given as </p>
+<p>$$\begin{align}
+    \min_{t_f, \mathbf{T}_c, \Gamma} \quad &amp; \| E\mathbf{r}(t_f) - \mathbf{q}\| \\
+    \textrm{p.o.} \quad &amp; \mathbf{x}(t) \in \mathbf{X} \quad \forall t \in [0, t_f] \\
+    &amp; 0 &lt; \rho_1 \leq \|\mathbf{T}_c\| \leq \rho_2, \quad \hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \|\mathbf{T}_c\| \cos{\theta} \\
+    &amp; m(0) = m_0, \quad m(t_f) \geq m_0 - m_f &gt; 0 \\
+    &amp; \mathbf{r}(0) = \mathbf{r_0}, \enspace \dot{\mathbf{r}}(0) = \dot{\mathbf{r}}_0 \\
+    &amp; \mathbf{e}^T_1\mathbf{r}(t_f) = 0, \enspace \dot{\mathbf{r}}(tf) = \mathbf{0} \\
+    &amp; \dot{\mathbf{x}}(t) = \mathbf{A}\mathbf{x}(t) + \mathbf{B}\left(\mathbf{g} + \frac{\mathbf{T}_c(t)}{m}\right) \quad \forall t \in [0, t_f] \\
+    &amp; \dot{m}(t) = -\alpha \Gamma(t) \\
+    &amp; \|\mathbf{T}_c(t)\| \leq \Gamma(t), \enspace 0 &lt; \rho_1 \leq \Gamma(t) \leq \rho_2 \\
+    &amp; \hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \cos{\theta} \Gamma(t)
 \end{align}$$</p>
 <p>Helper vectors and matrices</p>
 <p>$$\begin{align}
@@ -89,14 +171,6 @@ $$</p>
     0 &amp; 1 &amp; 0
 \end{bmatrix}^T
 \end{align}$$</p>
-<p>Definition of the set of possible positions</p>
-<p>$$
-\mathbf{X} = { (\mathbf{r}, \mathbf{\dot{r}}) \in \mathbb{R}^6 \, : \, \|\mathbf{\dot{r}} \| \leq V_{max}, \; \|E(\mathbf{r} - \mathbf{r}(t_f))\| - \mathbf{c}^T(\mathbf{r} - \mathbf{r}(t_f) \leq 0 }
-$$</p>
-<p>where \(\mathbf{c}\) defines a cone with it's point in \(\mathbf{r}(t_f)\), parametrized with the glide slope angle \(\gamma_{gs}\)</p>
-<p>$$
-\mathbf{c} \triangleq \frac{\mathbf{e}_1}{\tan{\gamma_{gs}}}, \quad \gamma_{gs} \in (0,\, \pi / 2).
-$$</p>
 <p>$$
 \begin{align}
 \min_{t_f, \mathbf{T}_c, \Gamma} \quad &amp; \int_0^{t_f} \Gamma(t)dt \\
