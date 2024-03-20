@@ -10,7 +10,31 @@
     <!-- FONTS -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Roboto+Slab:wght@100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">  </head>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Roboto+Slab:wght@100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">  
+    <!-- Install your choice of three.js version from CDN: -->
+    <script
+      type="text/javascript"
+      src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"
+    ></script>
+
+    <!-- Load a Controls instance, making sure that the version matches the Three.js version above: -->
+    <script
+      type="text/javascript"
+      src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/OrbitControls.js"
+    ></script>
+
+    <!-- Install the latest MathBox, either mathbox.js or mathbos.min.js -->
+    <script
+      type="text/javascript"
+      src="https://cdn.jsdelivr.net/npm/mathbox@latest/build/bundle/mathbox.js"
+    ></script>
+
+    <!-- Include the MathBox CSS: -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/mathbox@latest/build/mathbox.css"
+    />
+  </head>
   <body>
     <header>
       <div class="header-content">
@@ -108,6 +132,8 @@ $$</p>
 $$</p>
 <p>Then for the hard part, the constraints on thrust. They consist of lower and upper bounds for magnitude and pointing constraint for direction. The thrust is a 3D vector, therefore the upper bound constraint \(\|\mathbf{T}_c\| \leq \rho_2 \) defines a ball. It's shown on the diagram in blue. The lower bound constraint \(0 \lt \rho_1 \leq \|\mathbf{T}_c\| \) cuts out a smaller ball from the bigger one, making the constraint a non-convex shape. It's shown on the diagram in red. Lastly, the thrust pointing constraint \( \hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \|\mathbf{T}_c\|\cos{\theta}\) is a cone, shown on the diagram in green. The vertical direction normal vector \(\hat{\mathbf{n}} = \begin{bmatrix} 1 &amp; 0 &amp; 0 \end{bmatrix}^T\) points along the x axis. This constraint prohibits the lander from changing the attitude too much. In the paper you can find a 2D cross-section of this diagram.</p>
 <p><img src="/static/thrust_constraint.svg" alt="Thrust constraints" style="width:90%;"/></p>
+<div id="thrust-constraint" style="height:50vh;"></div>
+
 <h2>Nonconvex optimization problem</h2>
 <p>Taking the model and the constraints defined in previous sections into account, the authors of the paper formulate the 1st iteration of the two problems, which is unfortunately non-convex, thus not guaranteed to be solved by interior point numerical methods.</p>
 <p>$$\begin{align}
@@ -130,13 +156,9 @@ $$</p>
 <p>As mentioned before, the solution space is non-convex, therefore the authors propose adding an additional dimension to form a 4D \(\mathbf{T}_c-\Gamma\) solution space, which is designed to be convex. The new \(\Gamma(t)\) variable is used to pose the following constraints on the thrust vector</p>
 <ol>
 <li>convex upper bound constraint \(\|\mathbf{T}_c(t)\| \leq \Gamma(T)\)</li>
-<li>convex thrust pointing constraint \(\hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \Gamma(t)\cos{\theta}\). (compare with the previous version: \(\hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \|\mathbf{T}_c(t) \|\cos{\theta}\)). You can find detailed diagrams of how it works in the original paper, but to explain it in simple terms: </li>
+<li>convex thrust pointing constraint \(\hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \Gamma(t)\cos{\theta}\). (compare with the previous version: \(\hat{\mathbf{n}}^T\mathbf{T}_c(t) \geq \|\mathbf{T}_c(t) \|\cos{\theta}\)). You can find detailed diagrams of how it works in the paper, but to summarize, it defines a half space ... </li>
+<li>\(\rho_1 \leq \Gamma(t) \leq \rho_2\)</li>
 </ol>
-<p>$$\begin{align}
-&amp;  \\
-&amp;  \\
-&amp; \rho_1 \leq \Gamma(t) \leq \rho_2
-\end{align}$$</p>
 <p><img src="/static/relaxed_thrust_constraint.svg" alt="Relaxed thrust constraints" style="width:90%;"/></p>
 <p>The full form of the optimization problem is given as </p>
 <p>$$\begin{align}
@@ -373,5 +395,6 @@ $$</p>
     </footer>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="/static/thrust_constraint.js"></script>  
   </body>
 </html>
